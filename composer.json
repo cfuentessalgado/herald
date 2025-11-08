@@ -1,0 +1,48 @@
+{
+    "name": "assetplan/herald",
+    "description": "Announce events across your Laravel applications using message queues",
+    "keywords": ["laravel", "events", "rabbitmq", "redis", "messaging", "pub-sub"],
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Cristian Fuentes Salgado",
+            "email": "cfuentess2010@gmail.com"
+        }
+    ],
+    "require": {
+        "php": "^8.1|^8.2|^8.3",
+        "illuminate/support": "^10.0|^11.0",
+        "illuminate/console": "^10.0|^11.0",
+        "illuminate/events": "^10.0|^11.0",
+        "php-amqplib/php-amqplib": "^3.7",
+        "predis/predis": "^2.0|^3.0"
+    },
+    "require-dev": {
+        "orchestra/testbench": "^8.0|^9.0",
+        "pestphp/pest": "^3.0",
+        "pestphp/pest-plugin-laravel": "^3.0",
+        "mockery/mockery": "^1.6"
+    },
+    "autoload": {
+        "psr-4": {
+            "Assetplan\\Herald\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Assetplan\\Herald\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "vendor/bin/pest"
+    },
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}
