@@ -1,7 +1,7 @@
 {
     "name": "assetplan/herald",
     "description": "Announce events across your Laravel applications using message queues",
-    "keywords": ["laravel", "events", "rabbitmq", "redis", "messaging", "pub-sub"],
+    "keywords": ["laravel", "events", "rabbitmq", "messaging", "pub-sub"],
     "type": "library",
     "license": "MIT",
     "authors": [
@@ -15,8 +15,7 @@
         "illuminate/support": "^10.0|^11.0",
         "illuminate/console": "^10.0|^11.0",
         "illuminate/events": "^10.0|^11.0",
-        "php-amqplib/php-amqplib": "^3.7",
-        "predis/predis": "^2.0|^3.0"
+        "php-amqplib/php-amqplib": "^3.7"
     },
     "require-dev": {
         "laravel/pint": "^1.20",

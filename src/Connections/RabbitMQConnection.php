@@ -16,8 +16,12 @@ class RabbitMQConnection implements ConnectionInterface
 
     private string $queueName;
 
+    private array $config;
+
     public function __construct(array $config)
     {
+        $this->config = $config;
+
         $this->connection = new AMQPStreamConnection(
             $config['host'],
             $config['port'],
@@ -34,7 +38,7 @@ class RabbitMQConnection implements ConnectionInterface
         // Declare exchange (idempotent)
         $this->channel->exchange_declare(
             $config['exchange'],
-            $config['exchange_type'] ?? 'fanout',
+            $config['exchange_type'] ?? 'topic',
             false,  // passive
             true,   // durable
             false   // auto_delete
@@ -48,9 +52,6 @@ class RabbitMQConnection implements ConnectionInterface
             false,  // exclusive
             false   // auto_delete
         );
-
-        // Bind queue to exchange
-        $this->channel->queue_bind($this->queueName, $config['exchange']);
 
         // Set up basic consume
         $this->channel->basic_qos(
@@ -115,6 +116,16 @@ class RabbitMQConnection implements ConnectionInterface
                 $requeue
             );
         }
+    }
+
+    public function bindToTopic(string $routingKey): void
+    {
+        // Bind queue to exchange with routing key pattern
+        $this->channel->queue_bind(
+            $this->queueName,
+            $this->config['exchange'],
+            $routingKey
+        );
     }
 
     public function close(): void

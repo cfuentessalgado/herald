@@ -4,7 +4,6 @@ namespace Assetplan\Herald;
 
 use Assetplan\Herald\Connections\ConnectionInterface;
 use Assetplan\Herald\Connections\RabbitMQConnection;
-use Assetplan\Herald\Connections\RedisConnection;
 use InvalidArgumentException;
 
 class HeraldManager
@@ -45,8 +44,7 @@ class HeraldManager
 
         return match ($driver) {
             'rabbitmq' => new RabbitMQConnection($config),
-            'redis' => new RedisConnection($config),
-            default => throw new InvalidArgumentException("Unsupported driver [{$driver}].")
+            default => throw new InvalidArgumentException("Unsupported driver [{$driver}]. Only 'rabbitmq' is supported.")
         };
     }
 

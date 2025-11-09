@@ -38,6 +38,12 @@ class HeraldWorkCommand extends Command
 
         $connection = $herald->connection($connectionName);
 
+        // Bind queue to topic pattern for RabbitMQ connections
+        if (method_exists($connection, 'bindToTopic')) {
+            $connection->bindToTopic($topic);
+            $this->info("Bound queue to topic pattern: {$topic}");
+        }
+
         $this->info('Listening for messages...');
 
         while (! $this->shouldQuit) {

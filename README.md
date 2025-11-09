@@ -1,13 +1,13 @@
 # Herald
 
-Announce events across your Laravel applications using message queues.
+Announce events across your Laravel applications using RabbitMQ.
 
-Herald enables pub-sub messaging between distributed applications. Publish events from any application (Laravel, CakePHP, legacy PHP, etc.) via RabbitMQ or Redis Streams, and consume them in Laravel where they're dispatched as native Laravel events to your Horizon queues.
+Herald enables pub-sub messaging between distributed applications. Publish events from any application (Laravel, CakePHP, legacy PHP, etc.) via RabbitMQ, and consume them in Laravel where they're dispatched as native Laravel events to your Horizon queues.
 
 ## Features
 
-- **Multiple Drivers**: RabbitMQ and Redis Streams support out of the box
-- **Topic-Based Filtering**: Process only the events you care about
+- **Pattern-Based Routing**: Subscribe to specific event patterns using RabbitMQ's topic exchange (`user.*`, `order.#`, etc.)
+- **Efficient Message Filtering**: Broker-level routing ensures consumers only receive relevant events
 - **Handler Registration**: Simple `Herald::on()` API for mapping message types to handlers
 - **Flexible Handler Types**: Queued jobs, sync handlers, closures, or object instances
 - **Idempotent Processing**: Automatic acknowledgment with error handling
@@ -18,7 +18,7 @@ Herald enables pub-sub messaging between distributed applications. Publish event
 
 - PHP 8.1 or higher
 - Laravel 10.x or 11.x
-- RabbitMQ or Redis (depending on your chosen driver)
+- RabbitMQ
 
 ## Installation
 
@@ -63,7 +63,6 @@ php artisan vendor:publish --tag=herald-config
 
 Herald uses environment variables for configuration. Add these to your `.env` file:
 
-**For RabbitMQ:**
 ```env
 HERALD_CONNECTION=rabbitmq
 RABBITMQ_HOST=localhost
@@ -72,17 +71,10 @@ RABBITMQ_USER=guest
 RABBITMQ_PASSWORD=guest
 RABBITMQ_VHOST=/
 RABBITMQ_EXCHANGE=herald-events
-RABBITMQ_QUEUE=my-app-queue
+RABBITMQ_QUEUE=my-app-queue  # Each application should have its own queue name
 ```
 
-**For Redis Streams:**
-```env
-HERALD_CONNECTION=redis
-REDIS_CONNECTION=default
-REDIS_STREAM=herald-events
-REDIS_CONSUMER_GROUP=my-app
-REDIS_CONSUMER_NAME=worker-1
-```
+**Note:** Herald uses a **topic exchange**, which enables efficient pattern-based routing. Each application has its own queue bound to the exchange, and workers subscribe to specific event patterns (e.g., `user.*`, `order.#`).
 
 ### Registering Handlers
 
@@ -144,22 +136,43 @@ Herald::on('email.send', $emailSender);
 Start the Herald worker to consume messages:
 
 ```bash
-# Process all configured events
-php artisan herald:work
+# Process all events (subscribes to all routing keys)
+php artisan herald:work '*'
 
-# Process only 'user' topic events
-php artisan herald:work user
+# Process only 'user.*' events (user.created, user.updated, etc.)
+php artisan herald:work 'user.*'
 
-# Process only 'order' topic events
-php artisan herald:work order
+# Process specific event
+php artisan herald:work 'order.shipped'
 
-# Use a specific connection
-php artisan herald:work user --connection=redis
+# Process multiple patterns using wildcards
+# * matches exactly one word
+# # matches zero or more words
+php artisan herald:work 'user.*.verified'  # Matches: user.email.verified
+php artisan herald:work 'order.#'          # Matches: order.created, order.payment.completed
+
+# Use a specific connection (if you have multiple RabbitMQ connections configured)
+php artisan herald:work 'user.*' --connection=rabbitmq
 ```
 
+#### Topic Pattern Matching
+
+Herald uses RabbitMQ's topic exchange for efficient message routing:
+
+- **`*` (asterisk)** - matches exactly one word (e.g., `user.*` matches `user.created`, `user.deleted`)
+- **`#` (hash)** - matches zero or more words (e.g., `order.#` matches `order.created`, `order.payment.completed`)
+- **Exact match** - subscribe to a specific event (e.g., `user.created`)
+
+**Examples:**
+- `user.*` - All user events (`user.created`, `user.updated`, `user.deleted`)
+- `*.created` - All creation events (`user.created`, `order.created`, `product.created`)
+- `user.*.verified` - Events like `user.email.verified`, `user.phone.verified`
+- `order.#` - All order-related events, including nested ones
+- `*` - All events (not recommended for production)
+
 The worker will:
-1. Connect to your message broker (RabbitMQ/Redis)
-2. Consume messages matching your topic filter
+1. Connect to RabbitMQ
+2. Subscribe only to messages matching your topic pattern
 3. Execute registered handlers for each message type
 4. Dispatch queued handlers to Laravel's queue system (Horizon compatible)
 5. Acknowledge successful processing
@@ -274,7 +287,9 @@ Herald::on('user.logout', fn (Message $msg) => Log::info("User {$msg->payload['u
 
 ### Publishing Messages from Laravel
 
-While Herald is primarily a consumer package, you can publish messages directly to the broker:
+While Herald is primarily a consumer package, you can publish messages directly to the broker.
+
+**Important:** When publishing to RabbitMQ, always use the event type as the routing key (third parameter). This enables efficient broker-level routing so consumers only receive events they're subscribed to.
 
 **RabbitMQ Example:**
 
@@ -303,32 +318,12 @@ $message = new AMQPMessage(json_encode([
 
 $channel->basic_publish(
     $message,
-    config('herald.connections.rabbitmq.exchange')
+    config('herald.connections.rabbitmq.exchange'),
+    'user.created'  // Routing key (event type)
 );
 
 $channel->close();
 $connection->close();
-```
-
-**Redis Streams Example:**
-
-```php
-use Illuminate\Support\Facades\Redis;
-
-Redis::xadd(
-    config('herald.connections.redis.stream'),
-    '*',
-    [
-        'message' => json_encode([
-            'id' => uniqid(),
-            'type' => 'user.created',
-            'payload' => [
-                'user_id' => 123,
-                'email' => 'user@example.com',
-            ],
-        ])
-    ]
-);
 ```
 
 ### Publishing from Legacy PHP Applications
@@ -379,7 +374,7 @@ class HeraldPublisher
             array('delivery_mode' => AMQPMessage::DELIVERY_MODE_PERSISTENT)
         );
 
-        $this->channel->basic_publish($msg, $this->exchange);
+        $this->channel->basic_publish($msg, $this->exchange, $type);
     }
 
     public function close()
@@ -404,74 +399,15 @@ class UsersController extends AppController
                 'password' => 'guest',
                 'vhost' => '/',
                 'exchange' => 'herald-events'
-            ));
-
-            $herald->publish('user.created', array(
-                'user_id' => $user['User']['id'],
-                'email' => $user['User']['email'],
-                'created_at' => $user['User']['created']
-            ));
-
-            $herald->close();
-
-            $this->Flash->success('User created successfully');
-            $this->redirect(array('action' => 'index'));
-        }
-    }
-}
-```
-
-**Redis Publisher (PHP 5.6+):**
-
-```php
-<?php
-// Install: composer require predis/predis:^1.1
-
-require_once __DIR__ . '/vendor/autoload.php';
-
-class HeraldRedisPublisher
-{
-    private $client;
-    private $stream;
-
-    public function __construct($config)
-    {
-        $this->client = new Predis\Client(array(
-            'scheme' => 'tcp',
-            'host'   => $config['host'],
-            'port'   => $config['port'],
-        ));
-
-        $this->stream = $config['stream'];
-    }
-
-    public function publish($type, $payload)
-    {
-        $message = array(
-            'id' => uniqid(),
-            'type' => $type,
-            'payload' => $payload
-        );
-
-        $this->client->xadd(
-            $this->stream,
-            '*',
-            array('message' => json_encode($message))
-        );
-    }
-}
-
-// Usage
-$herald = new HeraldRedisPublisher(array(
-    'host' => 'localhost',
-    'port' => 6379,
-    'stream' => 'herald-events'
 ));
 
 $herald->publish('user.created', array(
-    'user_id' => 123,
-    'email' => 'user@example.com'
+    'user_id' => $user['User']['id'],
+    'email' => $user['User']['email'],
+    'created_at' => $user['User']['created']
 ));
+
+            $herald->close();
 ```
 
 ## Message Format
@@ -495,7 +431,7 @@ Herald expects messages in this JSON format:
 
 ## How It Works
 
-1. **Publisher** (any app) sends a JSON message to RabbitMQ/Redis
+1. **Publisher** (any app) sends a JSON message to RabbitMQ
 2. **Herald Worker** (`herald:work`) consumes the message
 3. **Handler Lookup** finds registered handlers via `Herald::on()` for the message type
 4. **Smart Dispatch**:

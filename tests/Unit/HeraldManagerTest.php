@@ -16,13 +16,6 @@ beforeEach(function () {
                 'exchange' => 'test-exchange',
                 'queue' => 'test-queue',
             ],
-            'redis' => [
-                'driver' => 'redis',
-                'connection' => 'default',
-                'stream' => 'test-stream',
-                'consumer_group' => 'test-group',
-                'consumer_name' => 'test-consumer',
-            ],
         ],
     ];
 });

@@ -14,7 +14,6 @@ All notable changes to `herald` will be documented in this file.
 - **`HandleHeraldMessage` job** - Queue wrapper for async handler execution
 - Initial release
 - RabbitMQ connection driver with automatic exchange/queue setup
-- Redis Streams connection driver with consumer groups
 - Herald worker command (`herald:work`) with topic filtering
 - Event mapping configuration (message types → Laravel events)
 - Signal handling for graceful shutdown (SIGTERM/SIGINT)

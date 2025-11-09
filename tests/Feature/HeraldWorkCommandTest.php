@@ -3,7 +3,7 @@
 
 
 // These are simplified feature tests that test the logic without needing real connections
-// Full integration tests would require actual RabbitMQ/Redis instances
+// Full integration tests would require actual RabbitMQ instances
 
 it('command exists and is registered', function () {
     expect(
@@ -25,6 +25,5 @@ it('config has correct structure', function () {
 
     expect($config)->toHaveKey('default')
         ->and($config)->toHaveKey('connections')
-        ->and($config['connections'])->toHaveKey('rabbitmq')
-        ->and($config['connections'])->toHaveKey('redis');
+        ->and($config['connections'])->toHaveKey('rabbitmq');
 });

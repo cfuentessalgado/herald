@@ -19,8 +19,8 @@ return [
     | Herald Connections
     |--------------------------------------------------------------------------
     |
-    | Here you may configure the connections for your message brokers.
-    | Herald supports RabbitMQ and Redis Streams out of the box.
+    | Here you may configure the connection for your RabbitMQ message broker.
+    | Herald uses RabbitMQ's topic exchange for efficient pattern-based routing.
     |
     */
 
@@ -33,17 +33,9 @@ return [
             'password' => env('RABBITMQ_PASSWORD', 'guest'),
             'vhost' => env('RABBITMQ_VHOST', '/'),
             'exchange' => env('RABBITMQ_EXCHANGE', 'herald-events'),
-            'exchange_type' => 'fanout',
+            'exchange_type' => 'topic',
             'queue' => env('RABBITMQ_QUEUE', env('APP_NAME', 'laravel') . '-queue'),
             'queue_durable' => true,
-        ],
-
-        'redis' => [
-            'driver' => 'redis',
-            'connection' => env('REDIS_CONNECTION', 'default'),
-            'stream' => env('REDIS_STREAM', 'herald-events'),
-            'consumer_group' => env('REDIS_CONSUMER_GROUP', env('APP_NAME', 'laravel')),
-            'consumer_name' => env('REDIS_CONSUMER_NAME', gethostname()),
         ],
     ],
 ];

@@ -25,16 +25,9 @@ class TestCase extends Orchestra
             'password' => 'guest',
             'vhost' => '/',
             'exchange' => 'herald-test',
-            'exchange_type' => 'fanout',
+            'exchange_type' => 'topic',
             'queue' => 'test-queue',
             'queue_durable' => true,
-        ]);
-        $app['config']->set('herald.connections.redis', [
-            'driver' => 'redis',
-            'connection' => 'default',
-            'stream' => 'herald-test',
-            'consumer_group' => 'test-group',
-            'consumer_name' => 'test-consumer',
         ]);
     }
 }
