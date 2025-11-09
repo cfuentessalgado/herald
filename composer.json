@@ -38,6 +38,16 @@
     "scripts": {
         "test": "vendor/bin/pest"
     },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Assetplan\\Herald\\HeraldServiceProvider"
+            ],
+            "aliases": {
+                "Herald": "Assetplan\\Herald\\Facades\\Herald"
+            }
+        }
+    },
     "config": {
         "sort-packages": true,
         "allow-plugins": {
