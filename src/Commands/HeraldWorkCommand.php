@@ -85,7 +85,8 @@ class HeraldWorkCommand extends Command
         HeraldManager $herald
     ): void {
         try {
-            $this->line("Received message: {$message->type}");
+            $this->line("Received message: {$message->type} (ID: {$message->id})");
+            $this->output->write('', false); // Force flush
 
             $handlers = $herald->getHandlers($message->type);
 
@@ -120,7 +121,8 @@ class HeraldWorkCommand extends Command
         // Handle closures - always execute synchronously
         if ($handler instanceof \Closure) {
             $handler($message);
-            $this->info("Executed closure handler for: {$message->type}");
+            $this->info("Executed closure handler for: {$message->type} (ID: {$message->id})");
+            $this->output->write('', false); // Force flush
 
             return;
         }
@@ -139,7 +141,8 @@ class HeraldWorkCommand extends Command
                 // Dispatch the handler job itself with the message
                 // The handler receives the Message in its constructor
                 $handler::dispatch($message);
-                $this->info("Dispatched queued handler: {$handler} for: {$message->type}");
+                $this->info("Dispatched queued handler: {$handler} for: {$message->type} (ID: {$message->id})");
+                $this->output->write('', false); // Force flush
 
                 return;
             }
@@ -148,7 +151,8 @@ class HeraldWorkCommand extends Command
             $instance = app($handler);
             if (method_exists($instance, 'handle')) {
                 $instance->handle($message);
-                $this->info("Executed handler: {$handler} for: {$message->type}");
+                $this->info("Executed handler: {$handler} for: {$message->type} (ID: {$message->id})");
+                $this->output->write('', false); // Force flush
             } else {
                 $this->warn("Handler {$handler} does not have a handle() method");
             }
@@ -169,7 +173,8 @@ class HeraldWorkCommand extends Command
             // Execute synchronously - call handle() method
             if (method_exists($handler, 'handle')) {
                 $handler->handle($message);
-                $this->info('Executed handler instance: '.get_class($handler)." for: {$message->type}");
+                $this->info('Executed handler instance: '.get_class($handler)." for: {$message->type} (ID: {$message->id})");
+                $this->output->write('', false); // Force flush
             } else {
                 $this->warn('Handler instance '.get_class($handler).' does not have a handle() method');
             }

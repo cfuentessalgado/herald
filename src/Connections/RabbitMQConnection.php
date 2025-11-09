@@ -79,7 +79,7 @@ class RabbitMQConnection implements ConnectionInterface
 
                 if (isset($data['type']) && isset($data['payload'])) {
                     $message = new Message(
-                        id: $msg->getDeliveryTag(),
+                        id: $data['id'] ?? $msg->getDeliveryTag(),
                         type: $data['type'],
                         payload: $data['payload'],
                         raw: $msg
@@ -112,7 +112,7 @@ class RabbitMQConnection implements ConnectionInterface
         }
 
         return new Message(
-            id: $message->getDeliveryTag(),
+            id: $data['id'] ?? $message->getDeliveryTag(),
             type: $data['type'],
             payload: $data['payload'],
             raw: $message
