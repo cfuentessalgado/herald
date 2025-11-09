@@ -46,67 +46,34 @@ class HeraldWorkCommand extends Command
 
         $this->info('Listening for messages...');
 
-        // Use basic_consume if available (more efficient, shows in RabbitMQ as consumer)
-        if (method_exists($connection, 'registerConsumer')) {
-            $consumerTag = $connection->registerConsumer(function ($message) use ($connection, $herald) {
-                $this->processMessage($message, $connection, $herald);
-            });
+        $consumerTag = $connection->registerConsumer(function ($message) use ($connection, $herald) {
+            $this->processMessage($message, $connection, $herald);
+        });
 
-            // Non-blocking wait loop - allows signal handling
-            while (! $this->shouldQuit) {
-                // Dispatch pending signals (required for SIGINT/SIGTERM to work)
-                if (extension_loaded('pcntl')) {
-                    pcntl_signal_dispatch();
-                }
-
-                try {
-                    // Wait for messages with timeout (non-blocking)
-                    $connection->wait(1.0);
-                } catch (AMQPTimeoutException $e) {
-                    // Timeout is expected, just continue
-                    if ($this->output->isVeryVerbose()) {
-                        $this->line('Waiting for messages... (timeout)');
-                    }
-                } catch (\Throwable $e) {
-                    $this->error("Error in consumer loop: {$e->getMessage()}");
-                    sleep(1);
-                }
+        // Non-blocking wait loop - allows signal handling
+        while (! $this->shouldQuit) {
+            // Dispatch pending signals (required for SIGINT/SIGTERM to work)
+            if (extension_loaded('pcntl')) {
+                pcntl_signal_dispatch();
             }
 
-            $this->info('Shutting down gracefully...');
-            $connection->cancelConsumer($consumerTag);
-            $connection->close();
-        } else {
-            // Fallback to polling for connections that don't support basic_consume
-            while (! $this->shouldQuit) {
-                // Dispatch pending signals (required for SIGINT/SIGTERM to work)
-                if (extension_loaded('pcntl')) {
-                    pcntl_signal_dispatch();
+            try {
+                // Wait for messages with timeout (non-blocking)
+                $connection->wait(1.0);
+            } catch (AMQPTimeoutException $e) {
+                // Timeout is expected, just continue
+                if ($this->output->isVeryVerbose()) {
+                    $this->line('Waiting for messages... (timeout)');
                 }
-
-                try {
-                    $message = $connection->consume();
-
-                    if (! $message) {
-                        usleep(100000); // 100ms
-                        continue;
-                    }
-
-                    $this->processMessage($message, $connection, $herald);
-
-                } catch (AMQPTimeoutException $e) {
-                    if ($this->output->isVeryVerbose()) {
-                        $this->line('Waiting for messages... (timeout)');
-                    }
-                } catch (\Throwable $e) {
-                    $this->error("Error in consumer loop: {$e->getMessage()}");
-                    sleep(1);
-                }
+            } catch (\Throwable $e) {
+                $this->error("Error in consumer loop: {$e->getMessage()}");
+                sleep(1);
             }
-
-            $this->info('Shutting down gracefully...');
-            $connection->close();
         }
+
+        $this->info('Shutting down gracefully...');
+        $connection->cancelConsumer($consumerTag);
+        $connection->close();
 
         return self::SUCCESS;
     }
