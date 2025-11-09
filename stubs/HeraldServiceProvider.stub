@@ -10,85 +10,15 @@ class HeraldServiceProvider extends ServiceProvider
 {
     /**
      * Register Herald message handlers.
-     * 
-     * This is where you map message types from your message broker
-     * (RabbitMQ/Redis) to Laravel handlers.
      */
     public function register(): void
     {
-        // ============================================
-        // QUEUED HANDLERS (Heavy operations)
-        // ============================================
-        
-        // Example: Process order payments asynchronously
-        // Herald::on('order.created', \App\Jobs\ProcessOrderPayment::class);
-        
-        // Example: Send welcome emails
+        // Map message types to handlers
+        // Herald::on('order.created', \App\Jobs\ProcessOrder::class);
         // Herald::on('user.registered', \App\Jobs\SendWelcomeEmail::class);
         
-        
-        // ============================================
-        // SYNC HANDLERS (Fast operations)
-        // ============================================
-        
-        // Example: Invalidate cache immediately
-        // Herald::on('cache.invalidate', \App\Handlers\InvalidateCache::class);
-        
-        // Example: Log user activity
-        // Herald::on('user.activity', \App\Handlers\LogUserActivity::class);
-        
-        
-        // ============================================
-        // CLOSURE HANDLERS (Quick operations or adapters)
-        // ============================================
-        
-        // Example: Simple logging
-        // Herald::on('metrics.track', function (Message $msg) {
-        //     \Log::info('Metric tracked', $msg->payload);
-        // });
-        
-        // Example: Adapter pattern for legacy jobs
-        // Herald::on('user.registered', function (Message $msg) {
-        //     \App\Jobs\LegacyUserProcessor::dispatch(
-        //         $msg->payload['user_id'],
-        //         $msg->payload['email']
-        //     );
-        // });
-        
-        
-        // ============================================
-        // MULTIPLE HANDLERS PER EVENT
-        // ============================================
-        
-        // You can register multiple handlers for the same event type.
-        // They will execute in the order they're registered.
-        
-        // Herald::on('payment.received', \App\Jobs\SendReceipt::class);
-        // Herald::on('payment.received', \App\Jobs\UpdateInventory::class);
-        // Herald::on('payment.received', \App\Jobs\NotifyAccounting::class);
-        
-        
-        // ============================================
-        // HANDLER TYPES REFERENCE
-        // ============================================
-        
-        /*
-         * 1. QUEUED JOBS (implements ShouldQueue)
-         *    - Herald dispatches: YourJob::dispatch($message)
-         *    - Your job receives Message in constructor
-         *    - Uses YOUR queue settings (queue name, tries, backoff, etc.)
-         *    - Appears in Horizon as YOUR job, not wrapped
-         *
-         * 2. SYNC HANDLERS (has handle() method)
-         *    - Herald calls: $handler->handle($message)
-         *    - Executes immediately (synchronously)
-         *    - Great for fast operations (< 100ms)
-         *
-         * 3. CLOSURES
-         *    - Always execute synchronously
-         *    - Perfect for simple logic or adapting legacy jobs
-         *    - Great for prototyping
-         */
+        // Use closures for simple handlers
+        // Herald::on('metrics.track', fn (Message $msg) => Log::info($msg->payload));
     }
 
     /**
