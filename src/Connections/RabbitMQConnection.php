@@ -97,23 +97,20 @@ class RabbitMQConnection implements ConnectionInterface
     public function consume(): ?Message
     {
         // Simple polling - just get one message
-        error_log('[Herald] Polling queue: ' . $this->queueName);
         $message = $this->channel->basic_get($this->queueName, false);
 
         if (! $message) {
-            error_log('[Herald] No message found');
             return null;
         }
 
-        error_log('[Herald] Message received! Body: ' . $message->getBody());
         $data = json_decode($message->getBody(), true);
 
         if (! isset($data['type']) || ! isset($data['payload'])) {
-            error_log('[Herald] Invalid message format');
+            // Invalid message format - ack and skip to avoid reprocessing
+            $this->channel->basic_ack($message->getDeliveryTag());
             return null;
         }
 
-        error_log('[Herald] Valid message type: ' . $data['type']);
         return new Message(
             id: $message->getDeliveryTag(),
             type: $data['type'],
@@ -143,13 +140,11 @@ class RabbitMQConnection implements ConnectionInterface
     public function bindToTopic(string $routingKey): void
     {
         // Bind queue to exchange with routing key pattern
-        error_log('[Herald] Binding queue "' . $this->queueName . '" to exchange "' . $this->config['exchange'] . '" with routing key "' . $routingKey . '"');
         $this->channel->queue_bind(
             $this->queueName,
             $this->config['exchange'],
             $routingKey
         );
-        error_log('[Herald] Bind successful');
     }
 
     public function publish(string $type, array $payload, ?string $id = null): void
@@ -159,9 +154,6 @@ class RabbitMQConnection implements ConnectionInterface
             'type' => $type,
             'payload' => $payload,
         ]);
-
-        error_log('[Herald] Publishing message type "' . $type . '" to exchange "' . $this->config['exchange'] . '" with routing key "' . $type . '"');
-        error_log('[Herald] Message body: ' . $message);
 
         $amqpMessage = new AMQPMessage($message, [
             'delivery_mode' => AMQPMessage::DELIVERY_MODE_PERSISTENT,
@@ -173,8 +165,6 @@ class RabbitMQConnection implements ConnectionInterface
             $this->config['exchange'],
             $type  // routing key
         );
-        
-        error_log('[Herald] Publish successful');
     }
 
     public function close(): void

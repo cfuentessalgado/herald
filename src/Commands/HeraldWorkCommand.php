@@ -48,6 +48,11 @@ class HeraldWorkCommand extends Command
 
         // Simple polling loop
         while (! $this->shouldQuit) {
+            // Dispatch pending signals (required for SIGINT/SIGTERM to work)
+            if (extension_loaded('pcntl')) {
+                pcntl_signal_dispatch();
+            }
+
             try {
                 $message = $connection->consume();
 
