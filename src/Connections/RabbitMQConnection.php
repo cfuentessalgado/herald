@@ -60,16 +60,16 @@ class RabbitMQConnection implements ConnectionInterface
     }
 
     /**
-     * Start consuming messages with a callback (blocking infinite loop).
+     * Register a consumer callback. Call wait() in a loop to process messages.
      * 
      * @param callable $callback Function that receives Message objects
-     * @throws \Throwable
+     * @return string The consumer tag
      */
-    public function startConsuming(callable $callback): void
+    public function registerConsumer(callable $callback): string
     {
-        $this->channel->basic_consume(
+        $consumerTag = $this->channel->basic_consume(
             $this->queueName,
-            '',     // consumer_tag
+            '',     // consumer_tag (auto-generated)
             false,  // no_local
             false,  // no_ack (manual ack required)
             false,  // exclusive
@@ -90,8 +90,31 @@ class RabbitMQConnection implements ConnectionInterface
             }
         );
 
-        // Blocking infinite loop - processes messages continuously
-        $this->channel->consume();
+        return $consumerTag;
+    }
+
+    /**
+     * Wait for messages with a timeout (non-blocking for signal handling).
+     * 
+     * @param float $timeout Timeout in seconds
+     */
+    public function wait(float $timeout = 1.0): void
+    {
+        if ($this->channel->is_consuming()) {
+            $this->channel->wait(null, false, $timeout);
+        }
+    }
+
+    /**
+     * Cancel a consumer.
+     * 
+     * @param string $consumerTag The consumer tag to cancel
+     */
+    public function cancelConsumer(string $consumerTag): void
+    {
+        if ($this->channel->is_consuming()) {
+            $this->channel->basic_cancel($consumerTag);
+        }
     }
 
     public function consume(): ?Message
