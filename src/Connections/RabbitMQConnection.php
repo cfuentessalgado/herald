@@ -16,10 +16,6 @@ class RabbitMQConnection implements ConnectionInterface
 
     private array $config;
 
-    private ?AMQPMessage $currentMessage = null;
-
-    private bool $consumerRegistered = false;
-
     public function __construct(array $config)
     {
         $this->config = $config;
@@ -65,43 +61,24 @@ class RabbitMQConnection implements ConnectionInterface
 
     public function consume(): ?Message
     {
-        // Register consumer callback once
-        if (! $this->consumerRegistered) {
-            $this->channel->basic_consume(
-                $this->queueName,
-                '',     // consumer_tag (auto-generated)
-                false,  // no_local
-                false,  // no_ack (manual ack)
-                false,  // exclusive
-                false,  // nowait
-                function (AMQPMessage $msg) {
-                    $this->currentMessage = $msg;
-                }
-            );
-            $this->consumerRegistered = true;
-        }
+        // Simple polling - just get one message
+        $message = $this->channel->basic_get($this->queueName, false);
 
-        // Reset current message
-        $this->currentMessage = null;
-
-        // Wait for one message with 1 second timeout
-        $this->channel->wait(null, false, 1);
-
-        if (! $this->currentMessage) {
+        if (! $message) {
             return null;
         }
 
-        $data = json_decode($this->currentMessage->getBody(), true);
+        $data = json_decode($message->getBody(), true);
 
         if (! isset($data['type']) || ! isset($data['payload'])) {
             return null;
         }
 
         return new Message(
-            id: $this->currentMessage->getDeliveryTag(),
+            id: $message->getDeliveryTag(),
             type: $data['type'],
             payload: $data['payload'],
-            raw: $this->currentMessage
+            raw: $message
         );
     }
 
