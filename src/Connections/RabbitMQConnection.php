@@ -9,10 +9,13 @@ use PhpAmqpLib\Message\AMQPMessage;
 class RabbitMQConnection implements ConnectionInterface
 {
     private AMQPStreamConnection $connection;
+
     private $channel;
+
     private ?AMQPMessage $currentMessage = null;
+
     private string $queueName;
-    
+
     public function __construct(array $config)
     {
         $this->connection = new AMQPStreamConnection(
@@ -22,12 +25,12 @@ class RabbitMQConnection implements ConnectionInterface
             $config['password'],
             $config['vhost'] ?? '/'
         );
-        
+
         $this->channel = $this->connection->channel();
-        
+
         // Store queue name
         $this->queueName = $config['queue'];
-        
+
         // Declare exchange (idempotent)
         $this->channel->exchange_declare(
             $config['exchange'],
@@ -36,7 +39,7 @@ class RabbitMQConnection implements ConnectionInterface
             true,   // durable
             false   // auto_delete
         );
-        
+
         // Declare queue with app-specific name
         $this->channel->queue_declare(
             $this->queueName,
@@ -45,10 +48,10 @@ class RabbitMQConnection implements ConnectionInterface
             false,  // exclusive
             false   // auto_delete
         );
-        
+
         // Bind queue to exchange
         $this->channel->queue_bind($this->queueName, $config['exchange']);
-        
+
         // Set up basic consume
         $this->channel->basic_qos(
             null,   // prefetch_size
@@ -56,15 +59,15 @@ class RabbitMQConnection implements ConnectionInterface
             null    // global
         );
     }
-    
+
     public function consume(): ?Message
     {
         $this->currentMessage = null;
-        
+
         $callback = function (AMQPMessage $msg) {
             $this->currentMessage = $msg;
         };
-        
+
         $this->channel->basic_consume(
             $this->channel->queue_bind_ok ?? $this->getQueueName(),
             '',     // consumer_tag
@@ -74,20 +77,20 @@ class RabbitMQConnection implements ConnectionInterface
             false,  // nowait
             $callback
         );
-        
+
         // Wait for one message with timeout
         $this->channel->wait(null, false, 1);
-        
-        if (!$this->currentMessage) {
+
+        if (! $this->currentMessage) {
             return null;
         }
-        
+
         $data = json_decode($this->currentMessage->getBody(), true);
-        
-        if (!isset($data['type']) || !isset($data['payload'])) {
+
+        if (! isset($data['type']) || ! isset($data['payload'])) {
             return null;
         }
-        
+
         return new Message(
             id: $this->currentMessage->getDeliveryTag(),
             type: $data['type'],
@@ -95,14 +98,14 @@ class RabbitMQConnection implements ConnectionInterface
             raw: $this->currentMessage
         );
     }
-    
+
     public function ack(Message $message): void
     {
         if ($message->raw instanceof AMQPMessage) {
             $this->channel->basic_ack($message->raw->getDeliveryTag());
         }
     }
-    
+
     public function nack(Message $message, bool $requeue = false): void
     {
         if ($message->raw instanceof AMQPMessage) {
@@ -113,13 +116,13 @@ class RabbitMQConnection implements ConnectionInterface
             );
         }
     }
-    
+
     public function close(): void
     {
         $this->channel->close();
         $this->connection->close();
     }
-    
+
     private function getQueueName(): string
     {
         return $this->queueName;
