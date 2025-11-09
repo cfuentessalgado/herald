@@ -24,6 +24,6 @@ it('has readonly properties', function () {
         raw: 'raw-data'
     );
 
-    expect(fn() => $message->id = '456')
+    expect(fn () => $message->id = '456')
         ->toThrow(\Error::class);
 });

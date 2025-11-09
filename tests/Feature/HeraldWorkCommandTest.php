@@ -16,33 +16,34 @@ it('command exists and is registered', function () {
 
 it('displays error when topic has no event mappings', function () {
     config(['herald.events' => []]);
-    
+    \Assetplan\Herald\Facades\Herald::clearHandlers();
+
     $this->artisan('herald:work', ['topic' => 'nonexistent'])
-        ->expectsOutput('No event mappings found for topic: nonexistent')
+        ->expectsOutput('No handlers registered for topic: nonexistent')
         ->assertExitCode(1);
 });
 
 it('herald manager gets event class by type', function () {
     $manager = app(HeraldManager::class);
-    
+
     expect($manager->getEventClass('user.created'))
         ->toBe(UserCreatedEvent::class);
 });
 
 it('herald manager gets events by topic', function () {
     $manager = app(HeraldManager::class);
-    
+
     $userEvents = $manager->getEventsByTopic('user');
-    
+
     expect($userEvents)->toHaveKey('user.created')
         ->and($userEvents)->toHaveKey('user.updated');
 });
 
 it('herald manager gets all events with wildcard', function () {
     $manager = app(HeraldManager::class);
-    
+
     $allEvents = $manager->getEventsByTopic('*');
-    
+
     expect($allEvents)->toHaveCount(3)
         ->and($allEvents)->toHaveKey('user.created')
         ->and($allEvents)->toHaveKey('order.created');
@@ -51,7 +52,7 @@ it('herald manager gets all events with wildcard', function () {
 it('event classes exist and are instantiable', function () {
     $userCreatedEvent = new UserCreatedEvent(['user_id' => 1]);
     $userUpdatedEvent = new UserUpdatedEvent(['user_id' => 1]);
-    
+
     expect($userCreatedEvent)->toBeInstanceOf(UserCreatedEvent::class)
         ->and($userCreatedEvent->data)->toBe(['user_id' => 1])
         ->and($userUpdatedEvent)->toBeInstanceOf(UserUpdatedEvent::class);
@@ -59,7 +60,7 @@ it('event classes exist and are instantiable', function () {
 
 it('config has correct structure', function () {
     $config = config('herald');
-    
+
     expect($config)->toHaveKey('default')
         ->and($config)->toHaveKey('connections')
         ->and($config)->toHaveKey('events')
