@@ -62,26 +62,64 @@ REDIS_CONSUMER_GROUP=my-app
 REDIS_CONSUMER_NAME=worker-1
 ```
 
-### Event Mappings
+### Registering Handlers
 
-Configure which message types should trigger which Laravel events in `config/herald.php`:
+Register handlers for message types in your `AppServiceProvider` or a dedicated `HeraldServiceProvider`:
+
+```php
+use Assetplan\Herald\Facades\Herald;
+use Assetplan\Herald\Message;
+
+class AppServiceProvider extends ServiceProvider
+{
+    public function register(): void
+    {
+        // Dispatch to Laravel event
+        Herald::on('user.registered', \App\Events\UserRegistered::class);
+        
+        // Queue a job (automatically queued if it implements ShouldQueue)
+        Herald::on('order.created', \App\Jobs\ProcessOrder::class);
+        
+        // Inline closure for quick operations (always runs synchronously)
+        Herald::on('user.logout', fn (Message $msg) => Log::info("User logged out: {$msg->id}"));
+        
+        // Multiple handlers for the same event
+        Herald::on('payment.received', \App\Jobs\SendReceipt::class);
+        Herald::on('payment.received', \App\Jobs\UpdateInventory::class);
+    }
+}
+```
+
+**Handler Types:**
+
+1. **Laravel Events** - Dispatched through Laravel's event system
+2. **Job Classes** - Automatically queued if they implement `ShouldQueue`
+3. **Service Classes** - Any class with a `handle(Message $message)` method
+4. **Closures** - For quick, inline operations (always synchronous)
+5. **Pre-configured Instances** - Pass configured objects directly
+
+```php
+// Pre-configured instance example
+$emailSender = new \App\Services\EmailSender(
+    apiKey: config('services.sendgrid.key')
+);
+Herald::on('email.send', $emailSender);
+```
+
+### Legacy: Config-Based Event Mappings
+
+You can also configure event mappings in `config/herald.php` (for backward compatibility):
 
 ```php
 'events' => [
     'user' => [
         'user.created' => App\Events\UserCreated::class,
         'user.updated' => App\Events\UserUpdated::class,
-        'user.deleted' => App\Events\UserDeleted::class,
-    ],
-
-    'order' => [
-        'order.created' => App\Events\OrderCreated::class,
-        'order.updated' => App\Events\OrderUpdated::class,
     ],
 ],
 ```
 
-Topics (`user`, `order`) are used to filter events when running the worker command.
+**Note:** `Herald::on()` registrations take priority over config-based mappings.
 
 ## Usage
 
@@ -110,40 +148,113 @@ The worker will:
 4. Dispatch the events (which can be queued via Horizon)
 5. Acknowledge successful processing
 
-### Creating Laravel Event Listeners
+### Creating Handlers
 
-Create event classes that will be triggered when messages arrive:
+Herald gives you full flexibility in how you handle messages. Here are the different approaches:
 
-```bash
-php artisan make:event UserCreated
+#### 1. Synchronous Handler (Fast Operations)
+
+For quick operations that complete in milliseconds:
+
+```php
+namespace App\Herald\Handlers;
+
+use Assetplan\Herald\Message;
+use Illuminate\Support\Facades\Log;
+
+class LogUserActivity
+{
+    public function handle(Message $message): void
+    {
+        Log::info('User activity', [
+            'event_id' => $message->id,
+            'event_type' => $message->type,
+            'data' => $message->payload,
+        ]);
+    }
+}
 ```
+
+Register it:
+```php
+Herald::on('user.activity', LogUserActivity::class);
+```
+
+#### 2. Queued Handler (Heavy Operations)
+
+For time-consuming operations, API calls, or database-intensive work:
+
+```php
+namespace App\Herald\Handlers;
+
+use Assetplan\Herald\Message;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+
+class ProcessOrderPayment implements ShouldQueue
+{
+    use Queueable;
+
+    public $queue = 'payments';
+    public $tries = 3;
+    public $backoff = [60, 120, 300];
+
+    public function handle(Message $message): void
+    {
+        // Heavy operation - automatically queued
+        $this->chargeCustomer($message->payload);
+    }
+}
+```
+
+Register it (automatically queued because of `ShouldQueue`):
+```php
+Herald::on('order.created', ProcessOrderPayment::class);
+```
+
+#### 3. Laravel Event Handler
+
+Dispatch to Laravel's event system for complex workflows:
 
 ```php
 namespace App\Events;
 
 use Illuminate\Foundation\Events\Dispatchable;
-use Illuminate\Queue\SerializesModels;
 
-class UserCreated
+class UserRegistered
 {
-    use Dispatchable, SerializesModels;
+    use Dispatchable;
 
-    public function __construct(
-        public array $payload
-    ) {}
+    public function __construct(public array $data) {}
 }
 ```
 
-Register listeners in `app/Providers/EventServiceProvider.php`:
-
+Register listeners in `EventServiceProvider`:
 ```php
 protected $listen = [
-    UserCreated::class => [
+    UserRegistered::class => [
         SendWelcomeEmail::class,
-        UpdateUserCache::class,
+        CreateUserProfile::class,
+        NotifyAdmins::class,
     ],
 ];
 ```
+
+Register with Herald:
+```php
+Herald::on('user.registered', UserRegistered::class);
+```
+
+#### 4. Closure Handler (Prototyping/Simple Logic)
+
+For quick operations or prototyping (always runs synchronously):
+
+```php
+Herald::on('cache.clear', fn (Message $msg) => Cache::forget($msg->payload['key']));
+Herald::on('user.logout', fn (Message $msg) => Log::info("User {$msg->payload['user_id']} logged out"));
+```
+
+**Pro tip:** Closures are great for development, but use proper classes in production for better testability and maintainability.
 
 ### Publishing Messages from Laravel
 
@@ -370,10 +481,20 @@ Herald expects messages in this JSON format:
 
 1. **Publisher** (any app) sends a JSON message to RabbitMQ/Redis
 2. **Herald Worker** consumes the message
-3. **Event Mapper** looks up the message type in your config
-4. **Laravel Event** is dispatched with the payload
-5. **Event Listeners** process the event (can be queued)
-6. **Message Acknowledgment** marks the message as processed
+3. **Handler Lookup** finds registered handlers for the message type
+4. **Smart Execution**:
+   - Closures execute immediately (sync)
+   - Classes without `ShouldQueue` execute immediately (sync)
+   - Classes with `ShouldQueue` are dispatched to Laravel's queue system (async)
+5. **Message Acknowledgment** marks the message as processed
+
+### Why Herald?
+
+- **Low surface area** - One method: `Herald::on()`
+- **Zero opinions** - Use events, jobs, closures, or custom classes
+- **Laravel-native** - Respects `ShouldQueue`, integrates with Horizon
+- **Flexible** - Handle messages however you want
+- **Simple** - "We just let you know when something happens"
 
 ## Deployment
 
@@ -424,6 +545,45 @@ COPY . /app
 RUN composer install --no-dev --optimize-autoloader
 
 CMD ["php", "artisan", "herald:work"]
+```
+
+## Quick Reference
+
+### Handler Registration
+
+```php
+// Class string (resolved from container)
+Herald::on('event.type', HandlerClass::class);
+
+// Object instance (pre-configured)
+Herald::on('event.type', new Handler($config));
+
+// Closure (always sync)
+Herald::on('event.type', fn (Message $msg) => /* ... */);
+
+// Multiple handlers
+Herald::on('event.type', FirstHandler::class);
+Herald::on('event.type', SecondHandler::class);
+```
+
+### Handler Execution Rules
+
+| Handler Type | Implements `ShouldQueue` | Execution |
+|-------------|-------------------------|-----------|
+| Closure | N/A | Always synchronous |
+| Class | ✅ Yes | Queued (async) |
+| Class | ❌ No | Synchronous |
+| Object instance | ✅ Yes | Queued (async) |
+| Object instance | ❌ No | Synchronous |
+
+### Message Object
+
+All handlers receive a `Message` object:
+
+```php
+$message->id;       // Unique message ID
+$message->type;     // Event type (e.g., 'user.created')
+$message->payload;  // Array of data
 ```
 
 ## Testing
