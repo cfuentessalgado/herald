@@ -1,7 +1,5 @@
 <?php
 
-
-
 // These are simplified feature tests that test the logic without needing real connections
 // Full integration tests would require actual RabbitMQ instances
 

@@ -79,7 +79,7 @@ class HandlerExecutionTest extends TestCase
         // Execute synchronously
         $instance = app($handler);
         $this->assertTrue(method_exists($instance, 'handle'));
-        
+
         // This should not throw
         $instance->handle($message);
 
@@ -134,7 +134,7 @@ class HandlerExecutionTest extends TestCase
 
         QueuedHandler::dispatch($message);
 
-        Queue::assertPushed(QueuedHandler::class, function ($job) use ($message) {
+        Queue::assertPushed(QueuedHandler::class, function ($job) {
             // Verify all message properties are preserved
             return $job->message->id === 'msg-456' &&
                    $job->message->type === 'order.created' &&

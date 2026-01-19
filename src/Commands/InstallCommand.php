@@ -4,7 +4,6 @@ namespace Assetplan\Herald\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Filesystem\Filesystem;
-use Illuminate\Support\Str;
 
 class InstallCommand extends Command
 {
@@ -50,8 +49,8 @@ class InstallCommand extends Command
 
     protected function publishServiceProvider(): void
     {
-        $filesystem = new Filesystem();
-        
+        $filesystem = new Filesystem;
+
         $stub = __DIR__.'/../../stubs/HeraldServiceProvider.stub';
         $target = app_path('Providers/HeraldServiceProvider.php');
 
@@ -59,6 +58,7 @@ class InstallCommand extends Command
         if ($filesystem->exists($target)) {
             if (! $this->confirm('HeraldServiceProvider already exists. Overwrite?', false)) {
                 $this->components->info('Skipped publishing service provider.');
+
                 return;
             }
         }
@@ -74,8 +74,8 @@ class InstallCommand extends Command
 
     protected function publishConfig(): void
     {
-        $filesystem = new Filesystem();
-        
+        $filesystem = new Filesystem;
+
         $source = __DIR__.'/../../config/herald.php';
         $target = config_path('herald.php');
 
@@ -83,6 +83,7 @@ class InstallCommand extends Command
         if ($filesystem->exists($target)) {
             if (! $this->confirm('Config file already exists. Overwrite?', false)) {
                 $this->components->info('Skipped publishing config.');
+
                 return;
             }
         }

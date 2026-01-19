@@ -48,8 +48,6 @@ class HeraldManager
         };
     }
 
-
-
     /**
      * Register a handler for a specific event type.
      *

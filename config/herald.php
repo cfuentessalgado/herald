@@ -34,10 +34,8 @@ return [
             'vhost' => env('RABBITMQ_VHOST', '/'),
             'exchange' => env('RABBITMQ_EXCHANGE', 'herald-events'),
             'exchange_type' => 'topic',
-            'queue' => env('RABBITMQ_QUEUE', env('APP_NAME', 'laravel') . '-queue'),
+            'queue' => env('RABBITMQ_QUEUE', env('APP_NAME', 'laravel').'-queue'),
             'queue_durable' => true,
         ],
     ],
 ];
-
-

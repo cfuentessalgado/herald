@@ -61,8 +61,8 @@ class RabbitMQConnection implements ConnectionInterface
 
     /**
      * Register a consumer callback. Call wait() in a loop to process messages.
-     * 
-     * @param callable $callback Function that receives Message objects
+     *
+     * @param  callable  $callback  Function that receives Message objects
      * @return string The consumer tag
      */
     public function registerConsumer(callable $callback): string
@@ -84,7 +84,7 @@ class RabbitMQConnection implements ConnectionInterface
                         payload: $data['payload'],
                         raw: $msg
                     );
-                    
+
                     $callback($message);
                 }
             }
@@ -95,8 +95,8 @@ class RabbitMQConnection implements ConnectionInterface
 
     /**
      * Wait for messages with a timeout (non-blocking for signal handling).
-     * 
-     * @param float $timeout Timeout in seconds
+     *
+     * @param  float  $timeout  Timeout in seconds
      */
     public function wait(float $timeout = 1.0): void
     {
@@ -107,8 +107,8 @@ class RabbitMQConnection implements ConnectionInterface
 
     /**
      * Cancel a consumer.
-     * 
-     * @param string $consumerTag The consumer tag to cancel
+     *
+     * @param  string  $consumerTag  The consumer tag to cancel
      */
     public function cancelConsumer(string $consumerTag): void
     {
@@ -131,6 +131,7 @@ class RabbitMQConnection implements ConnectionInterface
         if (! isset($data['type']) || ! isset($data['payload'])) {
             // Invalid message format - ack and skip to avoid reprocessing
             $this->channel->basic_ack($message->getDeliveryTag());
+
             return null;
         }
 

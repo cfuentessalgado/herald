@@ -11,10 +11,10 @@ use Illuminate\Queue\SerializesModels;
 
 /**
  * Queued handler example (implements ShouldQueue)
- * 
+ *
  * Herald dispatches YOUR job directly - no wrapper, no magic.
  * You get full control over queue settings, retries, backoff, etc.
- * 
+ *
  * Use for heavy operations, API calls, or anything that takes time.
  */
 class ProcessOrderPayment implements ShouldQueue
