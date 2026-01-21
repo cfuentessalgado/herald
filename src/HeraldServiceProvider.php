@@ -38,6 +38,7 @@ class HeraldServiceProvider extends ServiceProvider
             // Register console commands
             $this->commands([
                 HeraldWorkCommand::class,
+                Commands\HeraldListenCommand::class,
                 Commands\InstallCommand::class,
             ]);
         }
