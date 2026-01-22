@@ -11,6 +11,11 @@ use Illuminate\Support\Facades\Facade;
  * @method static array getRegisteredEventTypes()
  * @method static void clearHandlers()
  * @method static void publish(string $type, array $payload, ?string $id = null, ?string $connection = null)
+ * @method static void fake()
+ * @method static array published()
+ * @method static void assertPublished(string $type, ?callable $callback = null)
+ * @method static void assertPublishedTimes(string $type, int $count)
+ * @method static void assertNothingPublished()
  *
  * @see \Assetplan\Herald\HeraldManager
  */
