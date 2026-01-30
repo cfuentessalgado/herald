@@ -64,6 +64,19 @@ class HeraldManager
     }
 
     /**
+     * Register the same handler for multiple event types.
+     *
+     * @param  iterable  $eventTypes  A list of message types
+     * @param  string|object|callable  $handler  The handler (class string, instance, or closure)
+     */
+    public function onAny(iterable $eventTypes, string|object|callable $handler): void
+    {
+        foreach ($eventTypes as $eventType) {
+            $this->on($eventType, $handler);
+        }
+    }
+
+    /**
      * Get all registered handlers for a specific event type.
      *
      * @param  string  $eventType  The message type

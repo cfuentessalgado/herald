@@ -16,6 +16,7 @@ class HeraldServiceProvider extends ServiceProvider
         // Map message types to handlers
         // Herald::on('order.created', \App\Jobs\ProcessOrder::class);
         // Herald::on('user.registered', \App\Jobs\SendWelcomeEmail::class);
+        // Herald::onAny(['order.cancelled', 'order.refunded'], \App\Jobs\SyncOrderIndex::class);
         
         // Use closures for simple handlers
         // Herald::on('metrics.track', fn (Message $msg) => Log::info($msg->payload));

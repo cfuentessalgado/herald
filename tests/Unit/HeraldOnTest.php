@@ -64,11 +64,40 @@ class HeraldOnTest extends TestCase
         $this->assertCount(3, $handlers);
     }
 
+    public function test_can_register_handler_for_multiple_event_types(): void
+    {
+        Herald::onAny([
+            'user.created',
+            'order.created',
+            'payment.received',
+        ], SyncHandler::class);
+
+        $this->assertCount(1, $this->herald->getHandlers('user.created'));
+        $this->assertCount(1, $this->herald->getHandlers('order.created'));
+        $this->assertCount(1, $this->herald->getHandlers('payment.received'));
+    }
+
     public function test_can_get_all_registered_event_types(): void
     {
         Herald::on('user.created', SyncHandler::class);
         Herald::on('order.created', SyncHandler::class);
         Herald::on('payment.received', SyncHandler::class);
+
+        $types = $this->herald->getRegisteredEventTypes();
+
+        $this->assertCount(3, $types);
+        $this->assertContains('user.created', $types);
+        $this->assertContains('order.created', $types);
+        $this->assertContains('payment.received', $types);
+    }
+
+    public function test_on_any_registers_event_types(): void
+    {
+        Herald::onAny([
+            'user.created',
+            'order.created',
+            'payment.received',
+        ], SyncHandler::class);
 
         $types = $this->herald->getRegisteredEventTypes();
 

@@ -100,6 +100,13 @@ class HeraldServiceProvider extends ServiceProvider
         // Multiple handlers for the same event
         Herald::on('payment.received', \App\Jobs\SendReceipt::class);
         Herald::on('payment.received', \App\Jobs\UpdateInventory::class);
+
+        // Same handler for multiple events
+        Herald::onAny([
+            'property.pricing.updated',
+            'property.reservation.fallen',
+            'property.photo.updated',
+        ], \App\Jobs\UpdateUnitIndex::class);
         
         // Legacy job adapter - bridge to existing jobs
         Herald::on('user.registered', function (Message $msg) {
@@ -153,6 +160,14 @@ php artisan herald:work 'order.#'          # Matches: order.created, order.payme
 
 # Use a specific connection (if you have multiple RabbitMQ connections configured)
 php artisan herald:work 'user.*' --connection=rabbitmq
+```
+
+### Listing Registered Handlers
+
+See which events are registered and how they will run:
+
+```bash
+php artisan herald:list
 ```
 
 #### Topic Pattern Matching
